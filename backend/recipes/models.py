@@ -12,6 +12,9 @@ class Ingredient(models.Model):
     def __str__(self):
         return self.name
 
+    class Meta:
+        ordering = ['name']
+
 
 class Tag(models.Model):
     name = models.CharField(max_length=200, unique=True)
@@ -19,7 +22,7 @@ class Tag(models.Model):
     slug = models.SlugField(max_length=20, unique=True)
 
     class Meta:
-        ordering = ['-id']
+        ordering = ['name']
 
     def __str__(self):
         return self.name
@@ -51,14 +54,20 @@ class Recipe(models.Model):
 
 
 class IngredientAmount(models.Model):
-    indredient = models.ForeignKey(Ingredient, on_delete=models.CASCADE)
-    recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE)
+    ingredient = models.ForeignKey(
+        Ingredient,
+        on_delete=models.CASCADE,
+        related_name='ingredientsamount')
+    recipe = models.ForeignKey(
+        Recipe,
+        on_delete=models.CASCADE,
+        related_name='ingredientsamount')
     amount = models.IntegerField(validators=[MinValueValidator(1)])
 
     class Meta:
         ordering = ['-id']
         constraints = [
-            models.UniqueConstraint(fields=['indredient', 'recipe'],
+            models.UniqueConstraint(fields=['ingredient', 'recipe'],
                                     name='unique_ingredient_amount')
         ]
 
@@ -66,8 +75,8 @@ class IngredientAmount(models.Model):
 class Favorite(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     recipe = models.ForeignKey(
-        Recipe, 
-        on_delete=models.CASCADE, 
+        Recipe,
+        on_delete=models.CASCADE,
         related_name='favorites')
 
     class Meta:

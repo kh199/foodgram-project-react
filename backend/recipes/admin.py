@@ -10,7 +10,7 @@ class IngredientAdmin(admin.ModelAdmin):
     inlines = [
         IngredientsInRecipeInline,
     ]
-    list_display = ('name', 'measurement_unit')
+    list_display = ('id', 'name', 'measurement_unit')
     list_filter = ('name',)
     empty_value_display = '-empty-'
 

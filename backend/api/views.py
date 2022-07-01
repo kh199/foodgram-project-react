@@ -1,13 +1,12 @@
 from rest_framework import viewsets, status
 from recipes.models import Ingredient, Tag, Recipe, Favorite, ShoppingCart
-from .serializers import IngredientSerializer, TagSerializer, RecipeCreateSerializer, FavoriteRecipesSerializer, RecipeListSerializer, ShoppingCartSerializer
+from .serializers import IngredientSerializer, TagSerializer, RecipeCreateSerializer, FavoriteRecipesSerializer, RecipeListSerializer, ShoppingCartSerializer, ShortRecipeSerializer
 from .pagination import CustomPageNumberPagination
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from .permissions import IsAuthorOrReadOnly
 from .filters import TagFilter
 from rest_framework.permissions import IsAuthenticated
-from django.shortcuts import get_object_or_404
 from rest_framework import filters
 
 
@@ -41,19 +40,20 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
     @staticmethod
     def method_to_post(request, pk, serializers):
-        data = {'user': request.user.id, 'recipe': pk}
-        serializer = serializers(data=data, context={'request': request})
+        serializer = serializers(data={'user': request.user.id, 'recipe': pk})
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @staticmethod
-    def method_to_delete(request, pk, model):
-        user = request.user
-        recipe = get_object_or_404(Recipe, id=pk)
-        model_obj = get_object_or_404(model, user=user, recipe=recipe)
-        model_obj.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+    def method_to_delete(model, request, pk):
+        obj = model.objects.filter(user=request.user, recipe__id=pk)
+        if obj.exists():
+            obj.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response({
+            'errors': 'Такого рецепта нет'},
+            status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['POST'],
             permission_classes=[IsAuthenticated])
