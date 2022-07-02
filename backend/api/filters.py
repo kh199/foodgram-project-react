@@ -1,4 +1,5 @@
-from django_filters import FilterSet, AllValuesMultipleFilter
+from django_filters import AllValuesMultipleFilter, FilterSet
+
 from recipes.models import Recipe
 
 

@@ -1,5 +1,7 @@
 from django.contrib import admin
-from .models import Favorite, Ingredient, IngredientAmount, Recipe, ShoppingCart, Tag
+
+from .models import (Favorite, Ingredient, IngredientAmount, Recipe,
+                     ShoppingCart, Tag)
 
 
 class IngredientsInRecipeInline(admin.TabularInline):
@@ -20,7 +22,7 @@ class RecipeAdmin(admin.ModelAdmin):
         IngredientsInRecipeInline,
     ]
     exclude = ('ingredients',)
-    list_display = ('author', 'name', 'count_favorites')
+    list_display = ('id', 'author', 'name', 'count_favorites')
     list_filter = ('author', 'name', 'tags')
     empty_value_display = '-empty-'
 

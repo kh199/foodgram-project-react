@@ -1,10 +1,12 @@
-from rest_framework import serializers
-from recipes.models import Ingredient, Tag, Recipe, IngredientAmount, Favorite, ShoppingCart
-from rest_framework.validators import UniqueTogetherValidator
-from users.serializers import CustomUserSerializer
+from django.db import transaction
 from drf_extra_fields.fields import Base64ImageField
-from django.shortcuts import get_object_or_404
+from rest_framework import serializers
+from rest_framework.validators import UniqueTogetherValidator
+
+from recipes.models import (Favorite, Ingredient, IngredientAmount, Recipe,
+                            ShoppingCart, Tag)
 from users.models import Follow
+from users.serializers import CustomUserSerializer
 
 
 class IngredientSerializer(serializers.ModelSerializer):
@@ -95,7 +97,7 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
     """
     Для создания рецептов
     """
-    ingredients = IngredientCreateSerializer(many=True, write_only=True)
+    ingredients = IngredientCreateSerializer(many=True)
     tags = serializers.PrimaryKeyRelatedField(
         queryset=Tag.objects.all(), many=True)
     image = Base64ImageField()
@@ -121,23 +123,26 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
                     'Проверьте количество ингредиента')
         return data
 
-    def create_tags_ingredients(self, ingredients, tags, recipe):
-        for tag in tags:
-            recipe.tags.add(tag)
+    def create_ingredients(self, ingredients, recipe):
         for ingredient in ingredients:
             IngredientAmount.objects.create(
                 recipe=recipe,
-                ingredient_id=ingredient.get('id'),
+                ingredient_id=ingredient['ingredient'].get('id'),
                 amount=ingredient.get('amount')
             )
 
+    @transaction.atomic
     def create(self, validated_data):
+        author = self.context.get('request').user
         tags = validated_data.pop('tags')
         ingredients = validated_data.pop('ingredients')
-        recipe = Recipe.objects.create(**validated_data)
-        self.create_tags_ingredients(ingredients, tags, recipe)
+        recipe = Recipe.objects.create(author=author, **validated_data)
+        recipe.save()
+        recipe.tags.set(tags)
+        self.create_ingredients(ingredients, recipe)
         return recipe
 
+    @transaction.atomic
     def update(self, instance, validated_data):
         instance.name = validated_data.get('name', instance.name)
         instance.image = validated_data.get('image', instance.image)
@@ -154,7 +159,7 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         request = self.context.get('request')
         context = {'request': request}
-        return ShortRecipeSerializer(
+        return RecipeListSerializer(
             instance, context=context).data
 
 
