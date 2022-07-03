@@ -8,7 +8,6 @@ from rest_framework.response import Response
 
 from api.pagination import CustomPageNumberPagination
 from api.serializers import SubscriptionsSerializer
-
 from .models import Follow
 
 User = get_user_model()

@@ -10,7 +10,6 @@ from rest_framework.response import Response
 
 from recipes.models import (Favorite, Ingredient, IngredientAmount, Recipe,
                             ShoppingCart, Tag)
-
 from .filters import TagFilter
 from .pagination import CustomPageNumberPagination
 from .permissions import IsAuthorOrReadOnly
@@ -89,7 +88,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         ingredients = IngredientAmount.objects.filter(
             recipe__shoppingcarts__user=request.user).values_list(
             'ingredient__name', 'ingredient__measurement_unit').order_by(
-                'ingredient__name').annotate(Sum('amount'))
+                'ingredient__name').annotate(sum_amount=Sum('amount'))
         pdfmetrics.registerFont(TTFont('Arial', 'Arial.ttf'))
         response = HttpResponse(content_type='application/pdf')
         response['Content-Disposition'] = ('attachment; '

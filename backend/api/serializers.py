@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.shortcuts import get_object_or_404
 from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
 from rest_framework.validators import UniqueTogetherValidator
@@ -108,28 +109,38 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def validate_cooking_time(self, value):
-        if not (value >= 1):
+        if not (value > 0):
             raise serializers.ValidationError('Проверьте время приготовления!')
         return value
 
-    def validate_ingredients(self, data):
-        ingredients = self.initial_data.get('ingredients')
+    def validate(self, data):
+        ingredients = data['ingredients']
         if not ingredients:
             raise serializers.ValidationError('Выберите хотя бы 1 ингредиент')
+        ingredient_list = []
         for ingredient in ingredients:
-            amount = ingredient['amount']
-            if int(amount) <= 0:
+            ingredient = get_object_or_404(Ingredient,
+                                           id=ingredient['ingredient']['id'])
+            if ingredient in ingredient_list:
+                raise serializers.ValidationError(
+                    'Этот ингредиент уже добавлен')
+            ingredient_list.append(ingredient)
+        for ingredient in ingredients:
+            if int(ingredient.get('amount')) <= 0:
                 raise serializers.ValidationError(
                     'Проверьте количество ингредиента')
         return data
 
     def create_ingredients(self, ingredients, recipe):
-        for ingredient in ingredients:
-            IngredientAmount.objects.create(
+        IngredientAmount.objects.bulk_create([
+            IngredientAmount(
                 recipe=recipe,
                 ingredient_id=ingredient['ingredient'].get('id'),
                 amount=ingredient.get('amount')
-            )
+                )
+            for ingredient in ingredients
+            ]
+        )
 
     @transaction.atomic
     def create(self, validated_data):
@@ -137,24 +148,17 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
         tags = validated_data.pop('tags')
         ingredients = validated_data.pop('ingredients')
         recipe = Recipe.objects.create(author=author, **validated_data)
-        recipe.save()
         recipe.tags.set(tags)
         self.create_ingredients(ingredients, recipe)
         return recipe
 
     @transaction.atomic
     def update(self, instance, validated_data):
-        instance.name = validated_data.get('name', instance.name)
-        instance.image = validated_data.get('image', instance.image)
-        instance.text = validated_data.get('text', instance.text)
-        instance.cooking_time = validated_data.get(
-            'cooking_time', instance.cooking_time)
         instance.tags.clear()
         instance.tags.set(validated_data.pop('tags'))
         IngredientAmount.objects.filter(recipe=instance).delete()
         self.create_ingredients(validated_data.pop('ingredients'), instance)
-        instance.save()
-        return instance
+        return super().update(instance, validated_data)
 
     def to_representation(self, instance):
         request = self.context.get('request')
@@ -217,7 +221,7 @@ class SubscriptionsSerializer(serializers.ModelSerializer):
     first_name = serializers.ReadOnlyField(source='author.first_name')
     last_name = serializers.ReadOnlyField(source='author.last_name')
     is_subscribed = serializers.SerializerMethodField()
-    recipes = serializers.SerializerMethodField()
+    recipes = ShortRecipeSerializer(many=True)
     recipes_count = serializers.SerializerMethodField()
 
     class Meta:
@@ -236,10 +240,6 @@ class SubscriptionsSerializer(serializers.ModelSerializer):
     def get_is_subscribed(self, obj):
         return Follow.objects.filter(
             user=obj.user, author=obj.author).exists()
-
-    def get_recipes(self, obj):
-        queryset = Recipe.objects.filter(author=obj.author)
-        return ShortRecipeSerializer(queryset, many=True).data
 
     def get_recipes_count(self, obj):
         return Recipe.objects.filter(author=obj.author).count()
