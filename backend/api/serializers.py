@@ -109,7 +109,7 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def validate_cooking_time(self, value):
-        if not (value > 0):
+        if value < 1:
             raise serializers.ValidationError('Проверьте время приготовления!')
         return value
 
