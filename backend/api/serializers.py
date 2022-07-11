@@ -138,10 +138,9 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
                 recipe=recipe,
                 ingredient_id=ingredient['ingredient'].get('id'),
                 amount=ingredient.get('amount')
-                )
+            )
             for ingredient in ingredients
-            ]
-        )
+        ])
 
     @transaction.atomic
     def create(self, validated_data):
