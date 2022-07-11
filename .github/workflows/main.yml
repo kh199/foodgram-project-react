@@ -58,6 +58,7 @@ jobs:
         script: |
             sudo docker pull ${{ secrets.DOCKER_USERNAME }}/foodgramback:v1
             sudo docker pull ${{ secrets.DOCKER_USERNAME }}/foodgramfront:v1
+            cd infra/
             sudo docker-compose stop
             sudo docker-compose rm backend
             touch .env
