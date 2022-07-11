@@ -1,9 +1,11 @@
+import io
+
 from django.db.models import Sum
+from django.http import FileResponse
+from django_filters.rest_framework import DjangoFilterBackend
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
-import io
-from django.http import FileResponse
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -11,10 +13,9 @@ from rest_framework.response import Response
 
 from recipes.models import (Favorite, Ingredient, IngredientAmount, Recipe,
                             ShoppingCart, Tag)
-from .filters import RecipesFilter, IngredientSearchFilter
-from django_filters.rest_framework import DjangoFilterBackend
+from .filters import IngredientSearchFilter, RecipesFilter
 from .pagination import CustomPageNumberPagination
-from .permissions import IsAuthorOrReadOnly, IsAdminOrReadOnly
+from .permissions import IsAdminOrReadOnly, IsAuthorOrReadOnly
 from .serializers import (FavoriteRecipesSerializer, IngredientSerializer,
                           RecipeCreateSerializer, RecipeListSerializer,
                           ShoppingCartSerializer, TagSerializer)
