@@ -53,7 +53,7 @@ class RecipeListSerializer(serializers.ModelSerializer):
     """
     Для отображения рецептов
     """
-    tags = TagSerializer(many=True, read_only=True)
+    tags = TagSerializer(many=True)
     author = CustomUserSerializer(read_only=True)
     ingredients = IngredientAmountSerializer(
         source='ingredientsamount',
@@ -73,14 +73,15 @@ class RecipeListSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if request.user.is_anonymous:
             return False
-        return Favorite.objects.filter(user=request.user, id=obj.id).exists()
+        return Favorite.objects.filter(user=request.user, 
+                                       recipe_id=obj).exists()
 
     def get_is_in_shopping_cart(self, obj):
         request = self.context.get('request')
         if request.user.is_anonymous:
             return False
         return ShoppingCart.objects.filter(
-            user=request.user, id=obj.id).exists()
+            user=request.user, recipe_id=obj).exists()
 
 
 class ShortRecipeSerializer(serializers.ModelSerializer):
@@ -221,7 +222,7 @@ class SubscriptionsSerializer(serializers.ModelSerializer):
     first_name = serializers.ReadOnlyField(source='author.first_name')
     last_name = serializers.ReadOnlyField(source='author.last_name')
     is_subscribed = serializers.SerializerMethodField()
-    recipes = ShortRecipeSerializer(many=True)
+    recipes = serializers.SerializerMethodField()
     recipes_count = serializers.SerializerMethodField()
 
     class Meta:
@@ -243,3 +244,11 @@ class SubscriptionsSerializer(serializers.ModelSerializer):
 
     def get_recipes_count(self, obj):
         return Recipe.objects.filter(author=obj.author).count()
+
+    def get_recipes(self, obj):
+        request = self.context.get('request')
+        limit = request.GET.get('recipes_limit')
+        queryset = Recipe.objects.filter(author=obj.author)
+        if limit:
+            queryset = queryset[:int(limit)]
+        return ShortRecipeSerializer(queryset, many=True).data

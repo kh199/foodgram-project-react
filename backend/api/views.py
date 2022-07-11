@@ -1,18 +1,20 @@
 from django.db.models import Sum
-from django.http import HttpResponse
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
-from rest_framework import filters, status, viewsets
+import io
+from django.http import FileResponse
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from recipes.models import (Favorite, Ingredient, IngredientAmount, Recipe,
                             ShoppingCart, Tag)
-from .filters import TagFilter
+from .filters import RecipesFilter, IngredientSearchFilter
+from django_filters.rest_framework import DjangoFilterBackend
 from .pagination import CustomPageNumberPagination
-from .permissions import IsAuthorOrReadOnly
+from .permissions import IsAuthorOrReadOnly, IsAdminOrReadOnly
 from .serializers import (FavoriteRecipesSerializer, IngredientSerializer,
                           RecipeCreateSerializer, RecipeListSerializer,
                           ShoppingCartSerializer, TagSerializer)
@@ -20,14 +22,16 @@ from .serializers import (FavoriteRecipesSerializer, IngredientSerializer,
 
 class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Ingredient.objects.all()
+    permission_classes = [IsAdminOrReadOnly]
     serializer_class = IngredientSerializer
-    pagination_class = None
-    filter_backends = [filters.SearchFilter]
+    filter_backends = [IngredientSearchFilter]
     search_fields = ('^name',)
+    pagination_class = None
 
 
 class TagViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Tag.objects.all()
+    permission_classes = [IsAdminOrReadOnly]
     serializer_class = TagSerializer
     pagination_class = None
 
@@ -36,7 +40,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
     queryset = Recipe.objects.all()
     permission_classes = [IsAuthorOrReadOnly]
     pagination_class = CustomPageNumberPagination
-    filterset_class = TagFilter
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = RecipesFilter
 
     def get_serializer_class(self):
         if self.action in ('list', 'retrieve'):
@@ -85,18 +90,16 @@ class RecipeViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['GET'],
             permission_classes=[IsAuthenticated])
     def download_shopping_cart(self, request):
+        buffer = io.BytesIO()
+        page = canvas.Canvas(buffer)
         ingredients = IngredientAmount.objects.filter(
             recipe__shoppingcarts__user=request.user).values_list(
             'ingredient__name', 'ingredient__measurement_unit').order_by(
                 'ingredient__name').annotate(sum_amount=Sum('amount'))
-        pdfmetrics.registerFont(TTFont('Arial', 'Arial.ttf'))
-        response = HttpResponse(content_type='application/pdf')
-        response['Content-Disposition'] = ('attachment; '
-                                           'filename="shopping_list.pdf"')
-        page = canvas.Canvas(response)
-        page.setFont('Arial', size=24)
+        pdfmetrics.registerFont(TTFont('DejaVuSans', 'DejaVuSans.ttf'))
+        page.setFont('DejaVuSans', size=24)
         page.drawString(200, 750, 'Список покупок:')
-        page.setFont('Arial', size=16)
+        page.setFont('DejaVuSans', size=16)
         height = 700
         for i, item in enumerate(ingredients, start=1):
             page.drawString(50, height,
@@ -104,4 +107,6 @@ class RecipeViewSet(viewsets.ModelViewSet):
             height -= 25
         page.showPage()
         page.save()
-        return response
+        buffer.seek(0)
+        return FileResponse(buffer, as_attachment=True,
+                            filename='shopping_list.pdf')

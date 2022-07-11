@@ -18,11 +18,12 @@ class CustomUserViewSet(UserViewSet):
 
     @action(detail=False, permission_classes=[IsAuthenticated])
     def subscriptions(self, request):
-        follow = Follow.objects.filter(user=request.user)
+        queryset = Follow.objects.filter(user=request.user)
+        pages = self.paginate_queryset(queryset)
         serializer = SubscriptionsSerializer(
-            follow, many=True,
+            pages, many=True,
             context={'request': request})
-        return Response(serializer.data)
+        return self.get_paginated_response(serializer.data)
 
     @action(detail=True, methods=['POST'],
             permission_classes=[IsAuthenticated])
@@ -36,6 +37,6 @@ class CustomUserViewSet(UserViewSet):
     @subscribe.mapping.delete
     def delete_subscribe(self, request, id):
         author = get_object_or_404(User, id=id)
-        follow = get_object_or_404(Follow, user=request.user, author=author)
+        follow = Follow.objects.filter(user=request.user, author=author)
         follow.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
