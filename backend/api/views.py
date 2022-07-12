@@ -106,9 +106,10 @@ class RecipeViewSet(viewsets.ModelViewSet):
             page.drawString(50, height,
                             (f'{i}. {item[0]} {item[2]} {item[1]}'))
             height -= 25
-            if height < 30:
+            if height < 28:
                 page.showPage()
-                height = 700
+                page.setFont('DejaVuSans', size=16)
+                height = 800
 
         page.save()
         buffer.seek(0)
