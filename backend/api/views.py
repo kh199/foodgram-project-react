@@ -103,10 +103,13 @@ class RecipeViewSet(viewsets.ModelViewSet):
         page.setFont('DejaVuSans', size=16)
         height = 700
         for i, item in enumerate(ingredients, start=1):
-            page.drawString(40, height,
+            page.drawString(50, height,
                             (f'{i}. {item[0]} {item[2]} {item[1]}'))
-            height -= 50
-        page.showPage()
+            height -= 25
+            if height < 30:
+                page.showPage()
+                height = 700
+
         page.save()
         buffer.seek(0)
         return FileResponse(buffer, as_attachment=True,
