@@ -74,8 +74,11 @@ sudo docker-compose exec backend python manage.py createsuperuser
 ```
 sudo docker-compose exec backend python manage.py collectstatic --no-input 
 ```
-Загрузить базу данных ингредиентов:
+Заполнить базу тестовыми данными:
 ```
-sudo docker-compose exec backend python manage.py load_ingredients
+sudo docker-compose exec backend python manage.py loaddata datadump.json
 ```
 
+## Автор проекта
+
++ **Екатерина Каричева** [kh199](https://github.com/kh199)
